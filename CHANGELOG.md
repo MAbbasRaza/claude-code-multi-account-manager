@@ -8,6 +8,16 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **`ccm token status` and `ccm token refresh`** (the latter also as `ccm refresh`). Status reports
+  each account's token expiry and, critically, whether that figure is live or a stored snapshot:
+  only the signed-in account's expiry describes anything current, and an expired access token on a
+  parked profile is the normal resting state rather than a fault. Refresh re-reads the live login
+  and writes it over a profile, so a stored copy that has gone stale is brought back up to date.
+  This is what `ccm add <existing-name>` already did, under a name nobody would look for.
+- **Profiles can be selected by number as well as by name**, and `ccm list` now prints those numbers
+  so they match the ones the interactive picker already showed. A name always beats a number, so a
+  profile actually called `2` is still reachable by typing `2`; the alternative would act on a
+  different account than the one named.
 - **Installers for Windows, macOS and Ubuntu.** Each installs the command line tool, the desktop
   app and the tray app together and puts `ccm` on the `PATH`, so the desktop programs arrive as
   real applications instead of loose binaries in a bin directory.

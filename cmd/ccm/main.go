@@ -104,6 +104,12 @@ func run(args []string) error {
 		return cmdAutostart(g, rest[1:])
 	case "shortcut", "shortcuts":
 		return cmdShortcut(g, rest[1:])
+	case "token", "tokens":
+		return cmdToken(g, rest[1:])
+	case "refresh":
+		// The phrasing people reach for first. `ccm refresh work` and
+		// `ccm token refresh work` are the same thing.
+		return cmdToken(g, append([]string{"refresh"}, rest[1:]...))
 	case "doctor":
 		return cmdDoctor(g)
 	default:
@@ -146,6 +152,10 @@ QUICK START
 
   Run ccm with no arguments for an interactive picker instead.
 
+  Anywhere a profile is expected, "who" can be its name or the number shown by
+  "ccm list". A name always wins, so a profile actually called 2 is still
+  reachable by typing 2.
+
   IMPORTANT: capture an account with "ccm add" BEFORE you log out of it.
   Logging out destroys the refresh token, and nothing can recover it except
   signing in through the browser again.
@@ -163,6 +173,14 @@ COMMANDS
   ccm rename <old> <new>    rename a profile, keeping its credentials
                             (alias: mv)
   ccm rm <profile>          forget a profile (aliases: remove, delete)
+
+  ccm token status [who]    show each saved account's token: when it expires,
+                            whether that is live or a stored snapshot, and when
+                            it was last captured
+  ccm token refresh [who]   re-read the live login and save it over that
+                            profile, so the stored copy stops being stale.
+                            Defaults to the account you are signed into
+                            (aliases: ccm refresh, ccm tokens)
   ccm doctor                diagnose path resolution, permissions, running
                             sessions and vault health. Start here when
                             something is wrong
@@ -285,6 +303,10 @@ func cmdStatus(g globalOpts) error {
 }
 
 type listEntry struct {
+	// Index is the 1-based position shown by the picker, `ccm list` and
+	// `ccm token`, so a number a user reads off any of them selects the same
+	// profile everywhere.
+	Index        int    `json:"index"`
 	Name         string `json:"name"`
 	Email        string `json:"email,omitempty"`
 	Organization string `json:"organization,omitempty"`
@@ -302,8 +324,9 @@ func buildList(m *manager.Manager) ([]listEntry, manager.Status, error) {
 		return nil, st, err
 	}
 	var out []listEntry
-	for _, v := range views {
+	for i, v := range views {
 		e := listEntry{
+			Index:        i + 1,
 			Name:         v.Name,
 			Email:        v.EmailAddress,
 			Organization: v.OrganizationName,
@@ -358,7 +381,9 @@ func cmdList(g globalOpts) error {
 		case e.LastUsedAt != "":
 			note = "  last used " + e.LastUsedAt
 		}
-		fmt.Printf("%s %-16s %-32s %-8s%s\n", marker, e.Name, e.Email, e.Subscription, note)
+		// Numbered to match the interactive picker, so a number read here can
+		// be passed to the commands that accept one.
+		fmt.Printf("%s %d) %-16s %-32s %-8s%s\n", marker, e.Index, e.Name, e.Email, e.Subscription, note)
 	}
 	fmt.Println("\n* = currently active")
 	return nil

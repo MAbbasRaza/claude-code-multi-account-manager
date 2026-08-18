@@ -231,6 +231,9 @@ ccm add [name]                 capture the current login
 ccm rename <old> <new>         rename a profile, keeping its credentials
 ccm rm <profile>               remove a profile
 ccm status                     show the active account
+ccm token status [who]         per-account token expiry, live or snapshot
+ccm token refresh [who]        re-save a profile from the live login
+                               (alias: ccm refresh)
 ccm config get|set|path        read or change ccm's own settings
 ccm autostart status|enable|disable
                                start the tray app when you log in
