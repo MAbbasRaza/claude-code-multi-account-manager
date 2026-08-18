@@ -111,39 +111,131 @@ func run(args []string) error {
 	}
 }
 
-func usage() {
-	fmt.Print(`ccm - Claude Code credential manager
+func usage() { fmt.Print(helpText) }
+
+// helpText is a constant rather than an inline literal so a test can assert
+// every command the dispatcher accepts is actually documented here. This help
+// had already fallen behind the code twice.
+const helpText = `ccm - Claude Code multi-account manager
 
 Switch between Claude Code accounts without signing in again.
 
-USAGE
-  ccm                            interactive account picker
-  ccm init                       detect and pin the Claude Code config directory
-  ccm list                       list profiles, marking the active one
-  ccm use <profile>              switch to a profile
-  ccm add [name]                 capture the current login as a profile
-  ccm rename <old> <new>         rename a profile, keeping its credentials
-  ccm rm <profile>               remove a profile
-  ccm status                     show the active account
-  ccm config get|set|path        read or change ccm's own settings
+Claude Code stores one account's credentials at a time. Signing into a second
+account destroys the first one's refresh token, so going back means a full
+browser sign-in. ccm keeps each account in a protected vault and swaps them
+back on demand, which makes switching an offline, one-second operation.
+
+QUICK START
+
+  1. Point ccm at your Claude Code installation. Run this once:
+
+       ccm init
+
+  2. Save the account you are already signed into:
+
+       ccm add work
+
+  3. Switch to your other account inside Claude Code the normal way: run
+     /logout, then /login. Come back and save that one too:
+
+       ccm add personal
+
+  4. From now on, switch offline:
+
+       ccm use work
+
+  Run ccm with no arguments for an interactive picker instead.
+
+  IMPORTANT: capture an account with "ccm add" BEFORE you log out of it.
+  Logging out destroys the refresh token, and nothing can recover it except
+  signing in through the browser again.
+
+COMMANDS
+
+  ccm                       interactive account picker
+  ccm init                  detect and pin the Claude Code config directory
+  ccm status                show the active account, config dir and backend
+  ccm list                  list saved profiles, marking the active one
+                            (alias: ls)
+  ccm add [name]            save the current login as a profile. With no name,
+                            one is derived from the account's email address
+  ccm use <profile>         switch to a profile (alias: switch)
+  ccm rename <old> <new>    rename a profile, keeping its credentials
+                            (alias: mv)
+  ccm rm <profile>          forget a profile (aliases: remove, delete)
+  ccm doctor                diagnose path resolution, permissions, running
+                            sessions and vault health. Start here when
+                            something is wrong
+
+  ccm config path           print the location of ccm's settings file
+  ccm config get [key]      read a setting, or all of them
+  ccm config set <key> <value>
+                            change a setting. Keys:
+                              claudeConfigDir        which Claude Code install
+                                                     to manage
+                              vaultPath              where profiles are stored
+                              requireClosedSessions  refuse to switch while
+                                                     Claude Code is running
+                              credentialsBackend     auto, file or keychain
+
   ccm autostart status|enable|disable
-                                 start the tray app when you log in
+                            run the tray app when you log in. Uses the Run key
+                            on Windows, a LaunchAgent on macOS and an XDG entry
+                            on Linux, all per-user
+
   ccm shortcut status|add|remove [desktop|menu|all]
-                                 desktop and application menu shortcuts
-  ccm doctor                     diagnose path resolution and vault health
+                            desktop and application menu shortcuts for the
+                            desktop app. With no kind, acts on every kind this
+                            platform has (aliases: shortcuts)
 
 FLAGS
-  --config-dir <path>   override the Claude Code config directory for one run
-  --json                machine-readable output
-  --force, -f           proceed even if Claude Code is running
-  --version, -v         print version
+
+  --config-dir <path>   manage a different Claude Code install for one run
+  --json                machine-readable output, for scripts and the extension
+  --force, -f           switch even if Claude Code is running. See CAVEATS
+  --version, -v         print the version
   --help, -h            this message
 
-NOTES
-  A switch takes effect when Claude Code next starts. Credentials are read at
-  startup, so a running session keeps using the previous account.
-`)
-}
+ENVIRONMENT
+
+  CLAUDE_CONFIG_DIR         Claude Code's own setting, honoured when present
+  CCM_CLAUDE_CONFIG_DIR     overrides it for ccm only
+  CCM_HOME                  where ccm keeps its settings and vault
+  CCM_CREDENTIALS_BACKEND   auto, file or keychain. Use file on macOS over SSH
+                            or in tmux, where the login keychain is locked
+  CCM_VAULT_BACKEND         auto or file. Same situation, for ccm's own vault,
+                            which is encrypted under a key held in that same
+                            keychain
+
+  The config directory is resolved in this order, first match winning:
+  --config-dir, CCM_CLAUDE_CONFIG_DIR, ccm's settings file, CLAUDE_CONFIG_DIR,
+  then the platform default. "ccm doctor" prints every level and warns when
+  they disagree.
+
+WHAT A SWITCH ACTUALLY MOVES
+
+  Only the account-scoped keys: claudeAiOauth in the credentials store, plus
+  oauthAccount and userID in .claude.json. Your MCP server logins, project
+  history, trust decisions and settings are left byte for byte as they were.
+  Both files are backed up before every write.
+
+CAVEATS
+
+  Restart Claude Code after switching. Credentials are read at startup, so a
+  running session keeps using the previous account.
+
+  ccm refuses to switch while Claude Code is running, because a live session
+  rewrites these files when it exits and would undo the switch. --force
+  overrides that, and is usually the wrong answer.
+
+  Parked accounts still expire. A sign-in has a finite lifetime of its own, so
+  an account left unused long enough will need a real /login again. "ccm list"
+  and "ccm doctor" show expiry per profile.
+
+LEARN MORE
+
+  https://github.com/MAbbasRaza/claude-code-multi-account-manager
+`
 
 func emitJSON(v any) error {
 	enc := json.NewEncoder(os.Stdout)
