@@ -234,6 +234,9 @@ ccm status                     show the active account
 ccm token status [who]         per-account token expiry, live or snapshot
 ccm token refresh [who]        re-save a profile from the live login
                                (alias: ccm refresh)
+ccm restart [claude|tray|gui|all]
+                               close Claude Code so a switch takes effect, or
+                               restart ccm's own apps. Bare shows what running
 ccm config get|set|path        read or change ccm's own settings
 ccm autostart status|enable|disable
                                start the tray app when you log in

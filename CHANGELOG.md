@@ -14,6 +14,17 @@ All notable changes to this project are documented here. The format follows
   parked profile is the normal resting state rather than a fault. Refresh re-reads the live login
   and writes it over a profile, so a stored copy that has gone stale is brought back up to date.
   This is what `ccm add <existing-name>` already did, under a name nobody would look for.
+- **`ccm restart`**, which closes the loop on the instruction ccm prints after every switch.
+  `ccm restart claude` asks Claude Code to close so a switch takes effect; `ccm restart tray|gui|all`
+  stops and starts ccm's own apps, which is mainly useful after an upgrade when the running copy is
+  still the old build. With no argument it reports what it can restart and what is running, matching
+  how `ccm token`, `ccm shortcut` and `ccm autostart` already behave.
+  - Claude Code is closed but **not** reopened, because it belongs to the terminal or editor it was
+    started from and a detached copy would not be that session. `all` covers ccm's own apps only, so
+    asking to restart a tray icon never closes your Claude Code session as a side effect.
+  - Nothing is ever force-killed. These programs write files as they exit, and killing one mid-write
+    is how those files end up corrupted. Where a platform will not close a process politely, ccm
+    says so and names how to quit it by hand rather than escalating.
 - **Profiles can be selected by number as well as by name**, and `ccm list` now prints those numbers
   so they match the ones the interactive picker already showed. A name always beats a number, so a
   profile actually called `2` is still reachable by typing `2`; the alternative would act on a

@@ -5,15 +5,17 @@ package proc
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
-// findClaude shells out to ps, which is present on both macOS and Linux and
+// findProcs shells out to ps, which is present on both macOS and Linux and
 // avoids a /proc parser that would only work on one of them.
-func findClaude() ([]Process, error) {
+func findProcs(match func(string) bool) ([]Process, error) {
 	cmd := exec.Command("ps", "-A", "-o", "pid=,comm=")
 	var out, errb bytes.Buffer
 	cmd.Stdout = &out
@@ -38,9 +40,36 @@ func findClaude() ([]Process, error) {
 		}
 		// comm can be a full path depending on platform and invocation.
 		name := filepath.Base(strings.Join(sp[1:], " "))
-		if isClaude(name) {
+		if match(name) {
 			res = append(res, Process{PID: pid, Name: name})
 		}
 	}
 	return res, nil
+}
+
+// terminate sends SIGTERM, never SIGKILL. The program has to be allowed to run
+// its shutdown path, because Claude Code writes .claude.json on the way out.
+func terminate(p Process) error {
+	proc, err := os.FindProcess(p.PID)
+	if err != nil {
+		return fmt.Errorf("find pid %d: %w", p.PID, err)
+	}
+	if err := proc.Signal(syscall.SIGTERM); err != nil {
+		return fmt.Errorf("ask pid %d to close: %w", p.PID, err)
+	}
+	return nil
+}
+
+// alive reports whether a pid is still running. Signal 0 performs the
+// permission and existence checks without delivering anything.
+//
+// A zombie reads as alive, because its entry stays in the process table until
+// its parent collects it. That is correct for every caller here: ccm only ever
+// asks about processes it did not start, and those are reaped by whoever did.
+func alive(pid int) bool {
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+	return proc.Signal(syscall.Signal(0)) == nil
 }

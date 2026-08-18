@@ -110,6 +110,8 @@ func run(args []string) error {
 		// The phrasing people reach for first. `ccm refresh work` and
 		// `ccm token refresh work` are the same thing.
 		return cmdToken(g, append([]string{"refresh"}, rest[1:]...))
+	case "restart":
+		return cmdRestart(g, rest[1:])
 	case "doctor":
 		return cmdDoctor(g)
 	default:
@@ -184,6 +186,15 @@ COMMANDS
   ccm doctor                diagnose path resolution, permissions, running
                             sessions and vault health. Start here when
                             something is wrong
+
+  ccm restart               show what ccm can restart and what is running
+  ccm restart claude        ask Claude Code to close, so a switch takes effect.
+                            It is not reopened: it belongs to the terminal or
+                            editor you started it from
+  ccm restart tray|gui|all  stop and start ccm's own apps. Mainly useful after
+                            an upgrade, when the running copy is the old build.
+                            "all" means the tray and desktop app, never Claude
+                            Code
 
   ccm config path           print the location of ccm's settings file
   ccm config get [key]      read a setting, or all of them
